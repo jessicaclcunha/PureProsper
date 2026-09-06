@@ -1,4 +1,6 @@
 import { useState } from "react";
+import GroupSwitcher from "./GroupSwitcher";
+import { useGroup } from "../contexts/GroupContext";
 
 const LogoMark = () => (
   <img src="/logo.png" alt="PureProsper" style={{ width: 26, height: 26 }} />
@@ -6,6 +8,7 @@ const LogoMark = () => (
 
 const Header = ({ view, setView, userEmail }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { activeGroup } = useGroup();
 
   const handleNavClick = (newView) => {
     setView(newView);
@@ -41,9 +44,21 @@ const Header = ({ view, setView, userEmail }) => {
           <button onClick={() => handleNavClick("categories")} className={`nav-link ${view === "categories" ? "active" : ""}`}>
             <span className="nav-text">Categorias</span>
           </button>
+          {activeGroup && (
+            <>
+              <button onClick={() => handleNavClick("activities")} className={`nav-link ${view === "activities" ? "active" : ""}`}>
+                <span className="nav-text">Atividades</span>
+              </button>
+              <button onClick={() => handleNavClick("fuel")} className={`nav-link ${view === "fuel" ? "active" : ""}`}>
+                <span className="nav-text">Gasóleo</span>
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="header-actions">
+          <GroupSwitcher />
+
           <button
             onClick={() => handleNavClick("account")}
             className={`account-avatar-btn ${view === "account" ? "active" : ""}`}

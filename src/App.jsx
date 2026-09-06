@@ -11,10 +11,13 @@ import RecurringTransactions from "./components/RecurringTransactions";
 import BudgetAlerts from "./components/BudgetAlerts";
 import AnalysisView from "./components/AnalysisView";
 import AnnualView from "./components/AnnualView";
+import ActivitiesManager from "./components/ActivitiesManager";
+import FuelTracker from "./components/FuelTracker";
 import Auth, { EmailConfirmationPending } from "./components/Auth";
 import useRecurringInjector from "./hooks/useRecurringInjector";
 import { CategoriesContext, CategoriesProvider } from "./contexts/CategoriesContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
+import { GroupProvider, useGroup } from "./contexts/GroupContext";
 import Account from "./components/Account";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { supabase } from "./lib/supabaseClient";
@@ -52,16 +55,19 @@ const AuthGate = () => {
   }
 
   return (
-    <CategoriesProvider>
-      <CurrencyProvider>
-        <App />
-      </CurrencyProvider>
-    </CategoriesProvider>
+    <GroupProvider>
+      <CategoriesProvider>
+        <CurrencyProvider>
+          <App />
+        </CurrencyProvider>
+      </CategoriesProvider>
+    </GroupProvider>
   );
 };
 
 function App() {
   const { user, signOut } = useAuth();
+  const { activeGroup } = useGroup();
   const [transactions, setTransactions] = useState([]);
   const [loadingTx, setLoadingTx] = useState(true);
   const [view, setView] = useState("dashboard");
@@ -75,19 +81,20 @@ function App() {
   useEffect(() => {
     if (!user) return;
     setLoadingTx(true);
-    supabase.from("transactions").select("*").eq("user_id", user.id)
-      .then(({ data, error }) => {
-        if (!error) setTransactions((data || []).map(fromDbTransaction));
-        setLoadingTx(false);
-      });
-  }, [user]);
+    let query = supabase.from("transactions").select("*").eq("user_id", user.id);
+    query = activeGroup ? query.eq("group_id", activeGroup.id) : query.is("group_id", null);
+    query.then(({ data, error }) => {
+      if (!error) setTransactions((data || []).map(fromDbTransaction));
+      setLoadingTx(false);
+    });
+  }, [user, activeGroup]);
 
   const { categories } = useContext(CategoriesContext);
 
   const handleAddTransaction = async (t) => {
     const { data, error } = await supabase
       .from("transactions")
-      .insert(toDbTransaction(t, user.id))
+      .insert(toDbTransaction(t, user.id, activeGroup?.id ?? null, t.activityId ?? null))
       .select()
       .single();
     if (error) { console.error(error); return; }
@@ -174,6 +181,16 @@ function App() {
             <CategoryManager />
             <RecurringTransactions />
           </>
+        )}
+
+        {view === "activities" && <ActivitiesManager transactions={transactions} />}
+
+        {view === "fuel" && (
+          <FuelTracker
+            categories={categories}
+            onTransactionCreated={(tx) => setTransactions(prev => [...prev, tx])}
+            onTransactionDeleted={(id) => setTransactions(prev => prev.filter(t => t.id !== id))}
+          />
         )}
 
         {view === "account" && (

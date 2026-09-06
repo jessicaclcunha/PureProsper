@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "./AuthContext";
+import { useGroup } from "./GroupContext";
 
 export const CategoriesContext = createContext();
 
@@ -15,6 +16,7 @@ const defaultCategories = [
 
 export const CategoriesProvider = ({ children }) => {
   const { user } = useAuth();
+  const { activeGroupId } = useGroup();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,19 +25,18 @@ export const CategoriesProvider = ({ children }) => {
 
     const load = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("id");
+
+      let query = supabase.from("categories").select("*").eq("user_id", user.id).order("id");
+      query = activeGroupId ? query.eq("group_id", activeGroupId) : query.is("group_id", null);
+
+      const { data, error } = await query;
 
       if (error) { console.error(error); setLoading(false); return; }
 
-      if (data.length === 0) {
-        // Primeira vez do utilizador: semear categorias por omissão
+      if (data.length === 0 && !activeGroupId) {
         const { data: seeded } = await supabase
           .from("categories")
-          .insert(defaultCategories.map(c => ({ ...c, user_id: user.id })))
+          .insert(defaultCategories.map(c => ({ ...c, user_id: user.id, group_id: null })))
           .select();
         setCategories(seeded || []);
       } else {
@@ -45,12 +46,12 @@ export const CategoriesProvider = ({ children }) => {
     };
 
     load();
-  }, [user]);
+  }, [user, activeGroupId]);
 
   const addCategory = async (newCategory) => {
     const { data, error } = await supabase
       .from("categories")
-      .insert({ ...newCategory, user_id: user.id })
+      .insert({ ...newCategory, user_id: user.id, group_id: activeGroupId || null })
       .select()
       .single();
     if (error) { console.error(error); return; }
