@@ -5,13 +5,17 @@ export const fromDbTransaction = (row) => ({
   amount: Number(row.amount),
   type: row.type,
   categoryId: row.category_id,
+  groupId: row.group_id,
+  activityId: row.activity_id,
   isRecurring: row.is_recurring,
   recurringKey: row.recurring_key,
   recurringId: row.recurring_id,
 });
 
-export const toDbTransaction = (t, userId) => ({
+export const toDbTransaction = (t, userId, groupId = null, activityId = null) => ({
   user_id: userId,
+  group_id: groupId ?? t.groupId ?? null,
+  activity_id: activityId ?? t.activityId ?? null,
   category_id: t.categoryId ?? null,
   description: t.description,
   amount: t.amount,
@@ -30,12 +34,14 @@ export const fromDbRecurring = (row) => ({
   frequency: row.frequency,
   dayOfMonth: row.day_of_month,
   categoryId: row.category_id,
+  groupId: row.group_id,
   active: row.active,
   createdAt: new Date(row.created_at).getTime(),
 });
 
-export const toDbRecurring = (r, userId) => ({
+export const toDbRecurring = (r, userId, groupId = null) => ({
   user_id: userId,
+  group_id: groupId ?? r.groupId ?? null,
   category_id: r.categoryId ?? null,
   description: r.description,
   amount: r.amount,

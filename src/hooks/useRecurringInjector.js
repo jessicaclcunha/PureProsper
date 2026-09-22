@@ -3,18 +3,21 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { fromDbTransaction } from "../lib/mappers";
 
-const useRecurringInjector = (transactions, setTransactions) => {
+const useRecurringInjector = (transactions, setTransactions, groupId = null) => {
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
 
     const run = async () => {
-      const { data: recurring, error } = await supabase
+      let query = supabase
         .from("recurring_transactions")
         .select("*")
         .eq("user_id", user.id)
         .eq("active", true);
+      query = groupId ? query.eq("group_id", groupId) : query.is("group_id", null);
+
+      const { data: recurring, error } = await query;
 
       if (error || !recurring || recurring.length === 0) return;
 
@@ -29,6 +32,7 @@ const useRecurringInjector = (transactions, setTransactions) => {
           if (!alreadyExists) {
             rowsToInsert.push({
               user_id: user.id,
+              group_id: groupId ?? null,
               category_id: r.category_id,
               description: r.description,
               amount: r.amount,
@@ -55,9 +59,9 @@ const useRecurringInjector = (transactions, setTransactions) => {
     };
 
     run();
-    // Só corre quando o utilizador muda / no mount
+    // Só corre quando o utilizador ou o grupo ativo mudam / no mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, groupId]);
 };
 
 function getOccurrencesSince(recurring, now) {

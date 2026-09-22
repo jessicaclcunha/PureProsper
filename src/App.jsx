@@ -76,7 +76,7 @@ function App() {
     month: new Date().getMonth(), year: new Date().getFullYear(),
   });
 
-  useRecurringInjector(transactions, setTransactions);
+  useRecurringInjector(transactions, setTransactions, activeGroup?.id ?? null);
 
   useEffect(() => {
     if (!user) return;

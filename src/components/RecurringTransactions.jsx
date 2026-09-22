@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
+import { useGroup } from "../contexts/GroupContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { fromDbRecurring, toDbRecurring } from "../lib/mappers";
 
 const RecurringTransactions = () => {
   const { user } = useAuth();
+  const { activeGroup } = useGroup();
   const { symbol, formatCurrency } = useCurrency();
   const [recurring, setRecurring] = useState([]);
   const [isAddingRecurring, setIsAddingRecurring] = useState(false);
@@ -16,9 +18,10 @@ const RecurringTransactions = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("recurring_transactions").select("*").eq("user_id", user.id)
-      .then(({ data, error }) => { if (!error) setRecurring((data || []).map(fromDbRecurring)); });
-  }, [user]);
+    let query = supabase.from("recurring_transactions").select("*").eq("user_id", user.id);
+    query = activeGroup ? query.eq("group_id", activeGroup.id) : query.is("group_id", null);
+    query.then(({ data, error }) => { if (!error) setRecurring((data || []).map(fromDbRecurring)); });
+  }, [user, activeGroup]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +38,7 @@ const RecurringTransactions = () => {
 
     const { data, error } = await supabase
       .from("recurring_transactions")
-      .insert(toDbRecurring(newRecurring, user.id))
+      .insert(toDbRecurring(newRecurring, user.id, activeGroup?.id ?? null))
       .select()
       .single();
 
