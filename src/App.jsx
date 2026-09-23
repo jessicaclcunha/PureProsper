@@ -13,6 +13,7 @@ import AnalysisView from "./components/AnalysisView";
 import AnnualView from "./components/AnnualView";
 import ActivitiesManager from "./components/ActivitiesManager";
 import FuelTracker from "./components/FuelTracker";
+import PeopleManager from "./components/PeopleManager";
 import Auth, { EmailConfirmationPending } from "./components/Auth";
 import useRecurringInjector from "./hooks/useRecurringInjector";
 import { CategoriesContext, CategoriesProvider } from "./contexts/CategoriesContext";
@@ -182,6 +183,8 @@ function App() {
             <RecurringTransactions />
           </>
         )}
+
+        {view === "people" && <PeopleManager />}
 
         {view === "activities" && <ActivitiesManager transactions={transactions} />}
 

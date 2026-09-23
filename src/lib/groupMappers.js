@@ -63,3 +63,39 @@ export const toDbFuelTrip = (t, groupId, userId) => {
     amount,
   };
 };
+
+/* ── Pessoas do grupo ── */
+export const fromDbMember = (row) => ({
+  id: row.id,
+  groupId: row.group_id,
+  name: row.name,
+  monthlyFee: Number(row.monthly_fee ?? 0),
+  active: row.active,
+  createdAt: row.created_at,
+});
+
+export const toDbMember = (m, groupId, userId) => ({
+  user_id: userId,
+  group_id: groupId,
+  name: m.name,
+  monthly_fee: m.monthlyFee ?? 0,
+  active: m.active ?? true,
+});
+
+/* ── Mensalidades pagas ── */
+export const fromDbMemberPayment = (row) => ({
+  id: row.id,
+  memberId: row.member_id,
+  year: row.year,
+  month: row.month,
+  amount: Number(row.amount),
+  paidAt: row.paid_at,
+});
+
+export const toDbMemberPayment = (memberId, userId, year, month, amount) => ({
+  user_id: userId,
+  member_id: memberId,
+  year,
+  month,
+  amount,
+});

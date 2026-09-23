@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { useGroup } from "../contexts/GroupContext";
 import { useCurrency } from "../contexts/CurrencyContext";
-import { fromDbFuelTrip, toDbFuelTrip, fromDbActivity } from "../lib/groupMappers";
+import { fromDbFuelTrip, toDbFuelTrip, fromDbActivity, fromDbMember } from "../lib/groupMappers";
 import { fromDbTransaction } from "../lib/mappers";
 
 const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -18,6 +18,7 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
 
   const [trips, setTrips] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isManual, setIsManual] = useState(false);
@@ -36,7 +37,7 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
   });
 
   useEffect(() => {
-    if (!activeGroup) { setTrips([]); setActivities([]); setLoading(false); return; }
+    if (!activeGroup) { setTrips([]); setActivities([]); setMembers([]); setLoading(false); return; }
     setLoading(true);
 
     Promise.all([
@@ -46,14 +47,24 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
       supabase.from("activities").select("*")
         .eq("group_id", activeGroup.id).eq("user_id", user.id)
         .order("activity_date", { ascending: false }),
-    ]).then(([tripsRes, actsRes]) => {
+      supabase.from("group_members").select("*")
+        .eq("group_id", activeGroup.id).eq("user_id", user.id)
+        .eq("active", true).order("name"),
+    ]).then(([tripsRes, actsRes, membersRes]) => {
       if (!tripsRes.error) setTrips((tripsRes.data || []).map(fromDbFuelTrip));
       if (!actsRes.error) setActivities((actsRes.data || []).map(fromDbActivity));
+      if (!membersRes.error) setMembers((membersRes.data || []).map(fromDbMember));
       setLoading(false);
     });
   }, [activeGroup, user]);
 
-  const knownDrivers = [...new Set(trips.map(t => t.driverName))].sort();
+  // Sugestões do campo Condutor: primeiro as Pessoas do grupo, depois nomes
+  // já usados em viagens antigas que não coincidam com nenhuma pessoa.
+  const memberNames = members.map(m => m.name);
+  const knownDrivers = [
+    ...memberNames,
+    ...[...new Set(trips.map(t => t.driverName))].filter(n => !memberNames.includes(n)),
+  ].sort((a, b) => a.localeCompare(b));
 
   const resetForm = () => {
     setForm({ driverName: "", date: new Date().toISOString().split("T")[0], km: "", manualAmount: "", activityId: "" });
@@ -124,7 +135,7 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
     setTrips(prev => prev.filter(t => t.id !== trip.id));
   };
 
-  // Resumo condutor x mês — como na folha original
+  // Resumo condutor x mês — este é o valor a reembolsar a cada pessoa
   const summary = {};
   trips.forEach(t => {
     const month = new Date(t.date).getMonth();
@@ -180,6 +191,11 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
                 <datalist id="known-drivers">
                   {knownDrivers.map(d => <option key={d} value={d} />)}
                 </datalist>
+                {members.length === 0 && (
+                  <p style={{ fontSize: "11px", color: "var(--beige-600)", marginTop: "6px" }}>
+                    Dica: cria as pessoas em "Pessoas" para teres sempre os mesmos nomes sugeridos aqui.
+                  </p>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Data</label>
@@ -265,7 +281,7 @@ const FuelTracker = ({ categories = [], onTransactionCreated, onTransactionDelet
 
       {!loading && trips.length > 0 && (
         <div className="card" style={{ marginBottom: "20px", overflowX: "auto" }}>
-          <h3 className="section-title" style={{ fontSize: "16px", marginBottom: "12px" }}>Resumo por condutor</h3>
+          <h3 className="section-title" style={{ fontSize: "16px", marginBottom: "12px" }}>Resumo por condutor — valor a reembolsar</h3>
           <table className="fuel-summary-table">
             <thead>
               <tr>

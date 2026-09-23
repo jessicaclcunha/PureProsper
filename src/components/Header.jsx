@@ -46,6 +46,9 @@ const Header = ({ view, setView, userEmail }) => {
           </button>
           {activeGroup && (
             <>
+              <button onClick={() => handleNavClick("people")} className={`nav-link ${view === "people" ? "active" : ""}`}>
+                <span className="nav-text">Pessoas</span>
+              </button>
               <button onClick={() => handleNavClick("activities")} className={`nav-link ${view === "activities" ? "active" : ""}`}>
                 <span className="nav-text">Atividades</span>
               </button>
